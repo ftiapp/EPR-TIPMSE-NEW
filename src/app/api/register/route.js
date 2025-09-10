@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { sendRegistrationEmail } from '@/lib/email';
+import { sendRegistrationSMS } from '@/lib/sms';
 import { randomUUID } from 'crypto';
 
 function genShortCode(len = 12) {
@@ -88,10 +89,35 @@ export async function POST(req) {
 
     // Send confirmation email
     try {
-      await sendRegistrationEmail({ toEmail: email, toName: `${title}${first_name} ${last_name}`.trim(), code });
+      await sendRegistrationEmail({ 
+        toEmail: email, 
+        toName: `${title}${first_name} ${last_name}`.trim(), 
+        code,
+        participantType: participant_type,
+        organization,
+        phoneNumber: phone_number,
+        title,
+        firstName: first_name,
+        lastName: last_name,
+        department,
+      });
     } catch (e) {
       // Don't fail the whole request if email sending fails; log and continue
       console.error('Email error:', e);
+    }
+
+    // Send confirmation SMS
+    try {
+      await sendRegistrationSMS({ 
+        phoneNumber: phone_number, 
+        name: `${title}${first_name} ${last_name}`.trim(), 
+        participantType: participant_type,
+        organization: organization,
+        uuid: code 
+      });
+    } catch (e) {
+      // Don't fail the whole request if SMS sending fails; log and continue
+      console.error('SMS error:', e);
     }
 
     return NextResponse.json({ ok: true, id, code });

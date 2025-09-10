@@ -26,3 +26,8 @@ html {
   /* Force light mode UI for consistent contrast across browsers */
   color-scheme: light;
 }
+
+/* Utility to explicitly use Prompt font on any container */
+.font-prompt {
+  font-family: var(--font-prompt), Arial, Helvetica, sans-serif;
+}

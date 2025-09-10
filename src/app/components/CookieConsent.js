@@ -57,10 +57,10 @@ export default function CookieConsent() {
             {/* Decorative Elements */}
             <div className="absolute -top-1 left-4 right-4 h-1 bg-gradient-to-r from-emerald-400 via-teal-400 to-green-400 rounded-full"></div>
             
-            {/* Horizontal Layout */}
-            <div className="flex items-center justify-between gap-4">
+            {/* Responsive Layout */}
+            <div className="flex flex-col sm:flex-row items-center sm:items-start justify-between gap-4 w-full">
               {/* Left: Icon and Message */}
-              <div className="flex items-center space-x-4 flex-1">
+              <div className="flex items-center space-x-4 flex-1 w-full">
                 <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl flex items-center justify-center shadow-lg flex-shrink-0">
                   <span className="text-2xl">🍃</span>
                 </div>
@@ -75,7 +75,7 @@ export default function CookieConsent() {
               </div>
 
               {/* Right: Action Buttons */}
-              <div className="flex items-center space-x-3 flex-shrink-0">
+              <div className="flex flex-wrap items-center gap-3 flex-shrink-0 w-full sm:w-auto justify-center sm:justify-end">
                 {/* Learn More Button */}
                 <motion.button
                   onClick={handleLearnMore}

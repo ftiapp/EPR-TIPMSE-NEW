@@ -14,6 +14,65 @@ export default function TicketPage() {
   const [qrCodeUrl, setQrCodeUrl] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [resendingEmail, setResendingEmail] = useState(false);
+  const [emailResent, setEmailResent] = useState(false);
+
+  // Initialize emailResent from localStorage when registrant loads
+  useEffect(() => {
+    if (registrant && registrant.uuid && typeof window !== 'undefined') {
+      const key = `resend_email_${registrant.uuid}`;
+      const alreadyResent = localStorage.getItem(key) === '1';
+      if (alreadyResent) setEmailResent(true);
+    }
+  }, [registrant]);
+
+  // Function to download QR code
+  const downloadQRCode = () => {
+    if (!qrCodeUrl) return;
+    
+    const link = document.createElement('a');
+    link.href = qrCodeUrl;
+    link.download = `EPR-Event-QR-${registrant.uuid}.png`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  // Function to resend email
+  const resendEmail = async () => {
+    if (!registrant || resendingEmail || emailResent) return;
+    
+    setResendingEmail(true);
+    try {
+      const res = await fetch('/api/resend-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          uuid: registrant.uuid,
+          toEmail: registrant.email,
+          toName: `${registrant.title}${registrant.first_name} ${registrant.last_name}`,
+        })
+      });
+      
+      const data = await res.json();
+      if (data.ok) {
+        setEmailResent(true);
+        try {
+          if (typeof window !== 'undefined') {
+            const key = `resend_email_${registrant.uuid}`;
+            localStorage.setItem(key, '1');
+          }
+        } catch {}
+        alert(t ? (language === 'th' ? 'ส่งอีเมลสำเร็จแล้ว' : 'Email sent successfully') : 'ส่งอีเมลสำเร็จแล้ว');
+      } else {
+        alert(data.message || (t ? (language === 'th' ? 'เกิดข้อผิดพลาด' : 'Error occurred') : 'เกิดข้อผิดพลาด'));
+      }
+    } catch (err) {
+      alert(t ? (language === 'th' ? 'เกิดข้อผิดพลาดในการส่งอีเมล' : 'Failed to send email') : 'เกิดข้อผิดพลาดในการส่งอีเมล');
+    } finally {
+      setResendingEmail(false);
+    }
+  };
 
   useEffect(() => {
     if (params.code) {
@@ -30,14 +89,8 @@ export default function TicketPage() {
       const data = await res.json();
       setRegistrant(data.registrant);
       
-      // Generate QR code with registration data
-      const qrData = JSON.stringify({
-        uuid: data.registrant.uuid,
-        name: `${data.registrant.title}${data.registrant.first_name} ${data.registrant.last_name}`,
-        email: data.registrant.email,
-        organization: data.registrant.organization,
-        participant_type: data.registrant.participant_type
-      });
+      // Generate QR code with UUID only
+      const qrData = data.registrant.uuid;
       
       const qrUrl = await QRCode.toDataURL(qrData, {
         width: 256,
@@ -241,13 +294,13 @@ export default function TicketPage() {
         {/* Action Buttons */}
         <div className="mt-8 flex flex-col sm:flex-row gap-4 justify-center">
           <button
-            onClick={() => window.print()}
+            onClick={downloadQRCode}
             className="inline-flex items-center justify-center px-6 py-3 rounded-full bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-medium shadow-lg hover:shadow-xl transition-all"
           >
             <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
-            {t ? (language === 'th' ? 'พิมพ์บัตร' : 'Print Ticket') : 'พิมพ์บัตร'}
+            {t ? (language === 'th' ? 'ดาวน์โหลด QR Code' : 'Download QR Code') : 'ดาวน์โหลด QR Code'}
           </button>
           
           <button
