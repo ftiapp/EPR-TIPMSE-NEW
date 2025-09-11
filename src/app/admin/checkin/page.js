@@ -8,6 +8,8 @@ export default function AdminCheckinPage() {
   const canvasRef = useRef(null);
   const streamRef = useRef(null);
   const scanIntervalRef = useRef(null);
+  const jsqrRef = useRef(null); // cache jsQR module when loaded
+  const importingJsqrRef = useRef(false); // prevent repeated imports
   
   const [scannerReady, setScannerReady] = useState(false);
   const [cameraError, setCameraError] = useState('');
@@ -153,6 +155,36 @@ export default function AdminCheckinPage() {
             onCodeDetected(qrCode);
           }
         }
+      } else {
+        // Fallback: ใช้ jsQR อ่านจาก ImageData
+        try {
+          if (!jsqrRef.current && !importingJsqrRef.current) {
+            importingJsqrRef.current = true;
+            // dynamic import เพื่อลด bundle size และรองรับ SSR
+            const mod = await import('jsqr');
+            jsqrRef.current = mod.default || mod;
+            importingJsqrRef.current = false;
+          }
+
+          if (jsqrRef.current) {
+            const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+            const qr = jsqrRef.current(imageData.data, imageData.width, imageData.height);
+            if (qr && qr.data) {
+              const qrCode = String(qr.data).trim();
+              if (qrCode && qrCode !== currentUuid) {
+                onCodeDetected(qrCode);
+              }
+            }
+          }
+        } catch (e) {
+          // หากยังไม่ได้ติดตั้ง jsqr ให้แสดงใน console เพื่อช่วย debug
+          if ((e && e.message && e.message.includes("Cannot find module")) || (typeof e === 'string' && e.includes('Cannot find module'))) {
+            // เงียบไว้ใน UI แต่ log สำหรับ dev
+            console.debug('jsqr ยังไม่ได้ติดตั้ง: npm i jsqr');
+          } else {
+            console.debug('jsQR fallback error:', e);
+          }
+        }
       }
     } catch (error) {
       console.error('QR scanning error:', error);
@@ -190,28 +222,15 @@ export default function AdminCheckinPage() {
     
     setSearching(true);
     try {
-      // Mock API call - replace with actual endpoint
-      const mockResults = [
-        {
-          id: 1,
-          uuid: 'MOCK-UUID-001',
-          title: 'นาย',
-          first_name: 'สมชาย',
-          last_name: 'ใจดี',
-          organization: 'บริษัท ABC จำกัด',
-          participant_type: 'participant',
-          email: 'somchai@abc.com',
-          phone_number: '0812345678'
-        }
-      ].filter(item => 
-        item.first_name.includes(term) || 
-        item.last_name.includes(term) || 
-        item.email.includes(term) ||
-        item.organization.includes(term)
-      );
-      
-      setSearchResults(mockResults);
-    } catch {
+      const res = await fetch(`/api/admin/checkin/search?q=${encodeURIComponent(term)}&limit=20`, {
+        method: 'GET',
+        headers: { 'Accept': 'application/json' },
+      });
+      if (!res.ok) throw new Error('search failed');
+      const data = await res.json();
+      setSearchResults(Array.isArray(data.items) ? data.items : []);
+    } catch (e) {
+      console.error('search error', e);
       setSearchResults([]);
     } finally {
       setSearching(false);
@@ -236,25 +255,24 @@ export default function AdminCheckinPage() {
     setMessage('');
     
     try {
-      // Mock API call - replace with actual endpoint
-      const mockRegistrant = {
-        id: 1,
-        uuid: uuid,
-        title: 'นาย',
-        first_name: 'สมชาย',
-        last_name: 'ใจดี',
-        organization: 'บริษัท ABC จำกัด',
-        participant_type: 'participant',
-        email: 'somchai@abc.com',
-        phone_number: '0812345678',
-        check_in_participant: 0,
-        check_in_status: 'registered',
-        checked_in_at: null
-      };
-      
-      setResult({ registrant: mockRegistrant });
-      setShowModal(true);
+      const res = await fetch(`/api/admin/checkin/lookup?uuid=${encodeURIComponent(uuid)}`, {
+        method: 'GET',
+        headers: { 'Accept': 'application/json' },
+      });
+      if (res.status === 404) {
+        setMessage('ไม่พบข้อมูลผู้ลงทะเบียน');
+        return;
+      }
+      if (!res.ok) throw new Error('lookup failed');
+      const data = await res.json();
+      if (data && data.ok && data.registrant) {
+        setResult({ registrant: data.registrant });
+        setShowModal(true);
+      } else {
+        setMessage(data?.message || 'ไม่พบข้อมูล');
+      }
     } catch (e) {
+      console.error('lookup error', e);
       setMessage('เกิดข้อผิดพลาดในการค้นหา');
     } finally {
       setLookupLoading(false);
@@ -266,19 +284,21 @@ export default function AdminCheckinPage() {
     
     setConfirmLoading(true);
     try {
-      // Mock API call - replace with actual endpoint
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      const updatedRegistrant = {
-        ...result.registrant,
-        check_in_participant: 1,
-        check_in_status: 'checked_in',
-        checked_in_at: new Date().toISOString()
-      };
-      
-      setResult({ registrant: updatedRegistrant, already: false });
-      setMessage('เช็คอินสำเร็จ');
-    } catch {
+      const res = await fetch('/api/admin/checkin/confirm', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify({ uuid: currentUuid }),
+      });
+      if (!res.ok) throw new Error('confirm failed');
+      const data = await res.json();
+      if (data && data.ok) {
+        setResult({ registrant: data.registrant, already: data.already });
+        setMessage(data.already ? 'เช็คอินไว้ก่อนแล้ว' : 'เช็คอินสำเร็จ');
+      } else {
+        setMessage(data?.message || 'เช็คอินไม่สำเร็จ');
+      }
+    } catch (e) {
+      console.error('confirm error', e);
       setMessage('เกิดข้อผิดพลาดในการเช็คอิน');
     } finally {
       setConfirmLoading(false);

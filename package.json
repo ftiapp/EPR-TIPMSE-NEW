@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "framer-motion": "^12.23.12",
+    "jsqr": "^1.4.0",
     "mailersend": "^2.6.0",
     "mysql2": "^3.14.5",
     "next": "15.5.2",
