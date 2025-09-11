@@ -67,6 +67,16 @@ export default function Footer() {
                 <p className="text-emerald-400 text-sm">สถาบันการจัดการบรรจุภัณฑ์และรีไซเคิลเพื่อสิ่งแวดล้อม</p>
               </div>
             </div>
+            {/* Banner above the slogan */}
+            <div className="mb-6 rounded-xl overflow-hidden border border-white/20 shadow-lg">
+              <img
+                src="/ART%20Register%20resize.jpg"
+                alt="TIPMSE Banner"
+                className="w-full h-auto object-cover"
+                loading="lazy"
+              />
+            </div>
+
             <p className="text-gray-300 leading-relaxed mb-6">
               รวมพลังขับเคลื่อน EPR เปลี่ยนบรรจุภัณฑ์ให้เป็นวัตถุดิบ 
               เพื่อสิ่งแวดล้อมที่ยั่งยืนและเศรษฐกิจหมุนเวียน

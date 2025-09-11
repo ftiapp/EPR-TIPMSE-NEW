@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useLanguage } from '@/app/context/LanguageContext';
 import Header from '@/app/components/Header';
@@ -24,13 +24,21 @@ export default function RegisterPage() {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
   const [toasts, setToasts] = useState([]);
-  const [checkingDup, setCheckingDup] = useState(false);
+  const [, setCheckingDup] = useState(false);
   const [dupCheckTimeout, setDupCheckTimeout] = useState(null);
   const [nameStatus, setNameStatus] = useState(null); // null, 'checking', 'available', 'duplicate'
   const [showLoadingOverlay, setShowLoadingOverlay] = useState(false);
   const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
   const [isRegistrationClosed, setIsRegistrationClosed] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({});
+  // Refs for scrolling to fields on error
+  const titleRef = useRef(null);
+  const firstNameRef = useRef(null);
+  const lastNameRef = useRef(null);
+  const phoneRef = useRef(null);
+  const emailRef = useRef(null);
+  const orgRef = useRef(null);
+  const deptRef = useRef(null);
   const router = useRouter();
   const { t, language } = useLanguage();
 
@@ -103,7 +111,7 @@ export default function RegisterPage() {
       } else {
         setNameStatus('available');
       }
-    } catch (e) {
+    } catch {
       setNameStatus(null);
     }
   }
@@ -116,7 +124,7 @@ export default function RegisterPage() {
       const res = await fetch(`/api/register/check-name?${params.toString()}`);
       if (res.status === 409) return true;
       return false;
-    } catch (e) {
+    } catch {
       return false;
     } finally {
       setCheckingDup(false);
@@ -130,13 +138,33 @@ export default function RegisterPage() {
     if (!form.last_name) errs.last_name = language === 'th' ? 'โปรดกรอกนามสกุล' : 'Last name is required';
     if (!form.phone_number) errs.phone_number = language === 'th' ? 'โปรดกรอกเบอร์โทรศัพท์' : 'Phone number is required';
     if (!form.email) errs.email = language === 'th' ? 'โปรดกรอกอีเมล' : 'Email is required';
+    if (!form.organization) errs.organization = language === 'th' ? 'โปรดกรอกหน่วยงาน/องค์กร' : 'Organization is required';
+    if (!form.department) errs.department = language === 'th' ? 'โปรดกรอกหน่วยงาน/แผนก' : 'Department is required';
     if (!form.participant_type) errs.participant_type = language === 'th' ? 'โปรดเลือกประเภทผู้เข้าร่วม' : 'Participant type is required';
     if (!form.consent_given) errs.consent_given = language === 'th' ? 'ต้องยอมรับข้อตกลงก่อน' : 'You must accept the consent';
     if (form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
       errs.email = language === 'th' ? 'อีเมลไม่ถูกต้อง' : 'Invalid email address';
     }
     setFieldErrors(errs);
-    if (Object.keys(errs).length) return false;
+    if (Object.keys(errs).length) {
+      // Scroll to the first error (prioritize title as requested)
+      if (errs.title && titleRef.current) {
+        titleRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      } else if (errs.first_name && firstNameRef.current) {
+        firstNameRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      } else if (errs.last_name && lastNameRef.current) {
+        lastNameRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      } else if (errs.phone_number && phoneRef.current) {
+        phoneRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      } else if (errs.email && emailRef.current) {
+        emailRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      } else if (errs.organization && orgRef.current) {
+        orgRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      } else if (errs.department && deptRef.current) {
+        deptRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+      return false;
+    }
     return true;
   }
 
@@ -313,6 +341,7 @@ export default function RegisterPage() {
                 <label className="block text-sm font-semibold mb-3 text-gray-700">{t ? t('regTitleLabel') : 'คำนำหน้า'}</label>
                 <div className="relative">
                   <select
+                    ref={titleRef}
                     className={`w-full rounded-2xl border-2 bg-white/90 text-gray-900 p-4 focus:outline-none focus:ring-4 transition-all duration-200 appearance-none ${fieldErrors.title ? 'border-red-300 bg-red-50/50 focus:ring-red-200/50' : 'border-green-200 focus:ring-green-300/30 focus:border-green-400'}`}
                     value={form.title}
                     onChange={e => update('title', e.target.value)}
@@ -340,6 +369,7 @@ export default function RegisterPage() {
                 <label className="block text-sm font-semibold mb-3 text-gray-700">{t ? t('firstName') : 'ชื่อ'}</label>
                 <div className="relative">
                   <input
+                    ref={firstNameRef}
                     type="text"
                     className={`w-full rounded-2xl border-2 p-4 focus:outline-none focus:ring-4 transition-all duration-200 ${
                       nameStatus === 'duplicate' 
@@ -367,16 +397,17 @@ export default function RegisterPage() {
                       </svg>
                     </div>
                   )}
-                  {fieldErrors.first_name && (
-                    <p className="mt-2 text-sm text-red-600">{fieldErrors.first_name}</p>
-                  )}
                 </div>
+                {fieldErrors.first_name && (
+                  <p className="mt-2 text-sm text-red-600">{fieldErrors.first_name}</p>
+                )}
               </div>
-              
+
               <div className="lg:col-span-1">
                 <label className="block text-sm font-semibold mb-3 text-gray-700">{t ? t('lastName') : 'นามสกุล'}</label>
                 <div className="relative">
                   <input
+                    ref={lastNameRef}
                     type="text"
                     className={`w-full rounded-2xl border-2 p-4 focus:outline-none focus:ring-4 transition-all duration-200 ${
                       nameStatus === 'duplicate' 
@@ -398,6 +429,9 @@ export default function RegisterPage() {
                     </div>
                   )}
                 </div>
+                {fieldErrors.last_name && (
+                  <p className="mt-2 text-sm text-red-600">{fieldErrors.last_name}</p>
+                )}
               </div>
             </div>
           </div>
@@ -418,6 +452,7 @@ export default function RegisterPage() {
                 <label className="block text-sm font-semibold mb-3 text-gray-700">{t ? t('phoneNumber') : 'เบอร์โทรศัพท์'}</label>
                 <div className="relative">
                   <input
+                    ref={phoneRef}
                     type="tel"
                     className={`w-full rounded-2xl border-2 bg-white/90 text-gray-900 p-4 pl-12 focus:outline-none focus:ring-4 transition-all duration-200 ${fieldErrors.phone_number ? 'border-red-300 bg-red-50/50 focus:ring-red-200/50' : 'border-green-200 focus:ring-green-300/30 focus:border-green-400'}`}
                     value={form.phone_number}
@@ -431,12 +466,16 @@ export default function RegisterPage() {
                     </svg>
                   </div>
                 </div>
+                {fieldErrors.phone_number && (
+                  <p className="mt-2 text-sm text-red-600">{fieldErrors.phone_number}</p>
+                )}
               </div>
               
               <div>
                 <label className="block text-sm font-semibold mb-3 text-gray-700">{t ? t('email') : 'อีเมล'}</label>
                 <div className="relative">
                   <input
+                    ref={emailRef}
                     type="email"
                     className={`w-full rounded-2xl border-2 bg-white/90 text-gray-900 p-4 pl-12 focus:outline-none focus:ring-4 transition-all duration-200 ${fieldErrors.email ? 'border-red-300 bg-red-50/50 focus:ring-red-200/50' : 'border-green-200 focus:ring-green-300/30 focus:border-green-400'}`}
                     value={form.email}
@@ -450,6 +489,9 @@ export default function RegisterPage() {
                     </svg>
                   </div>
                 </div>
+                {fieldErrors.email && (
+                  <p className="mt-2 text-sm text-red-600">{fieldErrors.email}</p>
+                )}
               </div>
             </div>
           </div>
@@ -463,29 +505,38 @@ export default function RegisterPage() {
                 </svg>
               </div>
               {language === 'th' ? 'ข้อมูลองค์กร' : 'Organization Information'}
-              <span className="ml-2 text-sm text-gray-500 font-normal">({language === 'th' ? 'ไม่บังคับ' : 'Optional'})</span>
             </h2>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label className="block text-sm font-semibold mb-3 text-gray-700">{t ? t('organization') : 'หน่วยงาน/องค์กร'}</label>
+                <label className="block text-sm font-semibold mb-3 text-gray-700">{t ? t('organization') : 'หน่วยงาน/องค์กร'} <span className="text-red-500">*</span></label>
                 <input
+                  ref={orgRef}
                   type="text"
-                  className="w-full rounded-2xl border-2 border-green-200 bg-white/90 p-4 focus:outline-none focus:ring-4 focus:ring-green-300/30 focus:border-green-400 transition-all duration-200"
+                  className={`w-full rounded-2xl border-2 bg-white/90 p-4 focus:outline-none focus:ring-4 transition-all duration-200 ${fieldErrors.organization ? 'border-red-300 bg-red-50/50 focus:ring-red-200/50' : 'border-green-200 focus:ring-green-300/30 focus:border-green-400'}`}
                   value={form.organization}
                   onChange={e => update('organization', e.target.value)}
                   placeholder={language === 'th' ? 'ชื่อหน่วยงานหรือบริษัท' : 'Organization or company name'}
+                  required
                 />
+                {fieldErrors.organization && (
+                  <p className="mt-2 text-sm text-red-600">{fieldErrors.organization}</p>
+                )}
               </div>
               <div>
-                <label className="block text-sm font-semibold mb-3 text-gray-700">{t ? t('department') : 'แผนก'}</label>
+                <label className="block text-sm font-semibold mb-3 text-gray-700">{t ? t('department') : 'แผนก'} <span className="text-red-500">*</span></label>
                 <input
+                  ref={deptRef}
                   type="text"
-                  className="w-full rounded-2xl border-2 border-green-200 bg-white/90 p-4 focus:outline-none focus:ring-4 focus:ring-green-300/30 focus:border-green-400 transition-all duration-200"
+                  className={`w-full rounded-2xl border-2 bg-white/90 p-4 focus:outline-none focus:ring-4 transition-all duration-200 ${fieldErrors.department ? 'border-red-300 bg-red-50/50 focus:ring-red-200/50' : 'border-green-200 focus:ring-green-300/30 focus:border-green-400'}`}
                   value={form.department}
                   onChange={e => update('department', e.target.value)}
                   placeholder={language === 'th' ? 'แผนกที่สังกัด' : 'Department'}
+                  required
                 />
+                {fieldErrors.department && (
+                  <p className="mt-2 text-sm text-red-600">{fieldErrors.department}</p>
+                )}
               </div>
             </div>
           </div>

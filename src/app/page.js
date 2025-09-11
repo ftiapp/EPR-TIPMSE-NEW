@@ -39,7 +39,7 @@ export default function Home() {
               <div className="absolute -inset-1 bg-gradient-to-r from-emerald-400 to-teal-400 rounded-2xl blur opacity-20"></div>
               <div className="relative overflow-hidden rounded-2xl shadow-2xl border border-emerald-100 bg-white">
                 <img
-                  src="/2560x403-01.png"
+                  src="/ART%20Register%20resize.jpg"
                   alt="EPR Illustration"
                   className="w-full h-auto object-cover"
                 />
@@ -55,7 +55,7 @@ export default function Home() {
           <div className="max-w-7xl mx-auto">
             <div className="relative overflow-hidden rounded-2xl shadow-2xl">
               <img 
-                src="/2560x403-01.png" 
+                src="/ART%20Register%20resize.jpg" 
                 alt="EPR Banner" 
                 className="w-full h-auto object-cover"
               />

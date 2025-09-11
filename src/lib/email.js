@@ -67,6 +67,8 @@ export async function sendRegistrationEmail({
   }
 
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+  // Prefer inline Data URL for QR (better reliability in many clients). Fallback to absolute URL.
+  const qrImgSrc = qrCodeDataUrl || `${baseUrl}/api/qr/${code}`;
   
   const html = `
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
@@ -472,10 +474,7 @@ export async function sendRegistrationEmail({
                 <!-- Modern QR Section -->
                 <td class="qr-section">
                   <div class="qr-code-box">
-                    ${qrCodeDataUrl ? 
-                      `<img src="${qrCodeDataUrl}" alt="QR Code" width="180" height="180" style="display: block;">` : 
-                      `<div style="width: 180px; height: 180px; background: #f3f4f6; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #6b7280; font-size: 14px; text-align: center;">QR Code<br/>Loading...</div>`
-                    }
+                    <img src="${qrImgSrc}" alt="QR Code" width="180" height="180" style="display: block;">
                   </div>
                   
                   <div class="registration-badge">${code}</div>
@@ -573,7 +572,7 @@ export async function sendRegistrationEmail({
                     </a>
                   </td>
                   <td align="center" style="padding: 0 5px;">
-                    <a href="#" class="modern-button modern-button-secondary">
+                    <a href="https://epr-rdl3q.kinsta.app/https://epr-rdl3q.kinsta.app/#map" class="modern-button modern-button-secondary">
                       🗺️ แผนที่และเส้นทาง
                     </a>
                   </td>

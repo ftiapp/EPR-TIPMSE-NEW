@@ -250,7 +250,7 @@ export default function Schedule() {
           {/* Transportation Mode Toggle */}
           <div className="flex justify-center mb-8">
             <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-2 shadow-lg border border-emerald-200/50">
-              <div className="flex space-x-2">
+              <div className="flex flex-wrap justify-center gap-2">
                 {transportModes.map((mode) => (
                   <motion.button
                     key={mode.id}
@@ -284,14 +284,13 @@ export default function Schedule() {
             <div className="aspect-video rounded-xl relative overflow-hidden shadow-lg">
               {/* Google Maps Embed */}
               <iframe
+                title="TIPMSE location map"
                 src={transportModes.find(m => m.id === transportMode)?.mapUrl}
-                width="100%"
-                height="100%"
                 style={{ border: 0 }}
-                allowFullScreen=""
+                allowFullScreen
                 loading="lazy"
                 referrerPolicy="no-referrer-when-downgrade"
-                className="rounded-xl"
+                className="absolute inset-0 w-full h-full"
               ></iframe>
               
               {/* Route Overlay */}
@@ -309,13 +308,13 @@ export default function Schedule() {
                 </svg>
               </div>
 
-              {/* Route Information Panel */}
-              <div className="absolute bottom-4 left-4 right-4">
+              {/* Route Information Panel (overlay on md+, hidden on mobile) */}
+              <div className="hidden md:block absolute bottom-4 left-4 right-4 pointer-events-none">
                 <motion.div
                   initial={{ y: 50, opacity: 0 }}
                   animate={{ y: 0, opacity: 1 }}
                   transition={{ duration: 0.6, delay: 0.5 }}
-                  className="bg-white/95 backdrop-blur-sm rounded-lg p-4 shadow-lg border border-white/20"
+                  className="bg-white/90 backdrop-blur-sm rounded-lg p-4 shadow-lg border border-white/20 pointer-events-auto"
                 >
                   <h4 className="font-semibold text-gray-900 mb-3 flex items-center">
                     <span className="text-xl mr-2">{transportModes.find(m => m.id === transportMode)?.icon}</span>
@@ -360,19 +359,61 @@ export default function Schedule() {
               </div>
             </div>
 
+            {/* Route Information Panel (stacked on mobile) */}
+            <div className="md:hidden mt-4">
+              <motion.div
+                initial={{ y: 20, opacity: 0 }}
+                whileInView={{ y: 0, opacity: 1 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.4 }}
+                className="bg-white rounded-lg p-4 shadow border border-emerald-100"
+              >
+                <h4 className="font-semibold text-gray-900 mb-3 flex items-center">
+                  <span className="text-xl mr-2">{transportModes.find(m => m.id === transportMode)?.icon}</span>
+                  {t('routePrefix')} {transportMode} {t('routeToVenue')}
+                </h4>
+                <div className="grid grid-cols-1 gap-4">
+                  {transportModes.find(m => m.id === transportMode)?.routes.map((route, index) => (
+                    <div key={index} className="space-y-2">
+                      <div 
+                        className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium text-white"
+                        style={{ backgroundColor: route.color }}
+                      >
+                        <div 
+                          className="w-3 h-3 rounded-full mr-2 border-2 border-white"
+                          style={{ backgroundColor: route.color }}
+                        ></div>
+                        {route.name}
+                      </div>
+                      <div className="flex flex-wrap gap-1">
+                        {route.stations.map((station, stationIndex) => (
+                          <span
+                            key={stationIndex}
+                            className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded-full border"
+                          >
+                            {station}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </motion.div>
+            </div>
+
             {/* Action Buttons */}
-            <div className="flex justify-center space-x-4 mt-6">
+            <div className="flex flex-col sm:flex-row justify-center gap-3 sm:gap-4 mt-6">
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                className="bg-gradient-to-r from-emerald-500 to-teal-600 text-white px-6 py-3 rounded-full font-medium shadow-lg"
+                className="bg-gradient-to-r from-emerald-500 to-teal-600 text-white px-6 py-3 rounded-full font-medium shadow-lg w-full sm:w-auto"
               >
                 {t('viewMap')}
               </motion.button>
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                className="bg-white text-gray-700 border-2 border-gray-300 px-6 py-3 rounded-full font-medium hover:border-emerald-500 transition-colors"
+                className="bg-white text-gray-700 border-2 border-gray-300 px-6 py-3 rounded-full font-medium hover:border-emerald-500 transition-colors w-full sm:w-auto"
               >
                 {t('downloadMap')}
               </motion.button>
