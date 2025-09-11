@@ -572,7 +572,7 @@ export async function sendRegistrationEmail({
                     </a>
                   </td>
                   <td align="center" style="padding: 0 5px;">
-                    <a href="https://epr-rdl3q.kinsta.app/https://epr-rdl3q.kinsta.app/#map" class="modern-button modern-button-secondary">
+                    <a href="https://epr-rdl3q.kinsta.app/#map" class="modern-button modern-button-secondary">
                       🗺️ แผนที่และเส้นทาง
                     </a>
                   </td>
