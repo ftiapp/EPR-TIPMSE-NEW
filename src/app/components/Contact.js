@@ -120,7 +120,7 @@ export default function Contact() {
                 {t('importantInfo')}
               </span>
             </h3>
-            <div className="grid md:grid-cols-3 gap-6 text-center">
+            <div className="grid md:grid-cols-2 gap-6 text-center">
               <div>
                 <div className="text-3xl mb-2">🆓</div>
                 <p className="font-semibold text-gray-900">{t('free')}</p>
@@ -130,11 +130,6 @@ export default function Contact() {
                 <div className="text-3xl mb-2">🍽️</div>
                 <p className="font-semibold text-gray-900">{t('snacks')}</p>
                 <p className="text-sm text-gray-600">{t('snacksDesc')}</p>
-              </div>
-              <div>
-                <div className="text-3xl mb-2">📜</div>
-                <p className="font-semibold text-gray-900">{t('certificate')}</p>
-                <p className="text-sm text-gray-600">{t('certificateDesc')}</p>
               </div>
             </div>
           </div>
