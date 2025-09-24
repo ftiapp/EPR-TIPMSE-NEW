@@ -298,7 +298,7 @@ export default function AdminDashboardPage() {
   }
 
   useEffect(() => { loadStats(); }, []);
-  useEffect(() => { loadTable(); }, [page, pageSize, status, participantType]);
+  useEffect(() => { loadTable(); }, [page, pageSize, status, participantType, search]);
 
   const typeTh = (val) => {
     const map = {
@@ -413,7 +413,15 @@ export default function AdminDashboardPage() {
         {/* Filters */}
         <div className="bg-white/90 border border-emerald-100 rounded-2xl p-4 shadow mb-4">
           <div className="flex flex-col lg:flex-row gap-3 items-start lg:items-center">
-            <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="ค้นหาชื่อ อีเมล โทรศัพท์ รหัส ลงทะเบียน องค์กร" className="flex-1 w-full rounded-xl border-2 border-emerald-200 p-3" />
+            <input
+              value={search}
+              onChange={e=>{
+                setPage(1);
+                setSearch(e.target.value);
+              }}
+              placeholder="ค้นหาชื่อ อีเมล โทรศัพท์ รหัส ลงทะเบียน องค์กร"
+              className="flex-1 w-full rounded-xl border-2 border-emerald-200 p-3"
+            />
             <select value={status} onChange={e=>setStatus(e.target.value)} className="rounded-xl border-2 border-emerald-200 p-3">
               <option value="">สถานะ</option>
               <option value="registered">registered</option>

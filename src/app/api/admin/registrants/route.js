@@ -15,9 +15,23 @@ export async function GET(req) {
     const where = [];
     const params = [];
     if (search) {
-      where.push('(first_name LIKE ? OR last_name LIKE ? OR email LIKE ? OR phone_number LIKE ? OR uuid LIKE ? OR organization LIKE ? )');
-      const like = `%${search}%`;
-      params.push(like, like, like, like, like, like);
+      const normalizedSearch = search.replace(/\s+/g, ' ').trim();
+      const condensedSearch = normalizedSearch.replace(/\s+/g, '');
+      where.push(`(
+        first_name LIKE ?
+        OR last_name LIKE ?
+        OR email LIKE ?
+        OR phone_number LIKE ?
+        OR uuid LIKE ?
+        OR organization LIKE ?
+        OR CONCAT(first_name, ' ', last_name) LIKE ?
+        OR CONCAT_WS(' ', title, first_name, last_name) LIKE ?
+        OR CONCAT(first_name, last_name) LIKE ?
+        OR REPLACE(CONCAT_WS(' ', title, first_name, last_name), ' ', '') LIKE ?
+      )`);
+      const like = `%${normalizedSearch}%`;
+      const likeCondensed = `%${condensedSearch}%`;
+      params.push(like, like, like, like, like, like, like, like, likeCondensed, likeCondensed);
     }
     if (status) {
       where.push('check_in_status = ?');
