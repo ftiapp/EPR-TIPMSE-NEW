@@ -34,6 +34,10 @@ export default function AdminCheckinPage() {
     
     return () => {
       stopCamera();
+      if (searchTimer.current) {
+        clearTimeout(searchTimer.current);
+        searchTimer.current = null;
+      }
     };
   }, []);
 

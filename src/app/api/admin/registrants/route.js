@@ -7,6 +7,7 @@ export async function GET(req) {
     const { searchParams } = new URL(req.url);
     const search = (searchParams.get('search') || '').trim();
     const status = (searchParams.get('status') || '').trim();
+    const participantType = (searchParams.get('participantType') || '').trim();
     const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10));
     const pageSize = Math.min(200, Math.max(1, parseInt(searchParams.get('pageSize') || '50', 10)));
     const offset = (page - 1) * pageSize;
@@ -21,6 +22,10 @@ export async function GET(req) {
     if (status) {
       where.push('check_in_status = ?');
       params.push(status);
+    }
+    if (participantType) {
+      where.push('participant_type = ?');
+      params.push(participantType);
     }
     const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
 

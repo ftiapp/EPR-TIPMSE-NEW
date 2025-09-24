@@ -4,6 +4,13 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
+const PARTICIPANT_TYPES = ['participant', 'speaker', 'executive'];
+const PARTICIPANT_TYPE_STYLES = {
+  participant: { gradient: 'from-emerald-400 via-emerald-500 to-emerald-600', icon: '👥' },
+  speaker: { gradient: 'from-sky-400 via-sky-500 to-sky-600', icon: '🎤' },
+  executive: { gradient: 'from-amber-400 via-amber-500 to-amber-600', icon: '🏛️' },
+};
+
 function Badge({ children, color = 'emerald' }) {
   const map = {
     emerald: 'bg-emerald-100 text-emerald-700 border-emerald-200',
@@ -128,6 +135,8 @@ export default function AdminDashboardPage() {
   const [pageSize, setPageSize] = useState(25);
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('');
+  const [participantType, setParticipantType] = useState('');
+  const [exporting, setExporting] = useState(false);
   const [loadingTable, setLoadingTable] = useState(true);
   const [tableError, setTableError] = useState('');
   const [editingId, setEditingId] = useState(null);
@@ -229,6 +238,7 @@ export default function AdminDashboardPage() {
       const params = new URLSearchParams({ page: String(page), pageSize: String(pageSize) });
       if (search) params.set('search', search);
       if (status) params.set('status', status);
+      if (participantType) params.set('participantType', participantType);
       const res = await fetch(`/api/admin/registrants?${params.toString()}`);
       let data = null;
       try {
@@ -250,25 +260,72 @@ export default function AdminDashboardPage() {
     } finally { setLoadingTable(false); }
   }
 
-  useEffect(() => { loadStats(); }, []);
-  useEffect(() => { loadTable(); }, [page, pageSize, status]);
-
-  function StatusPill({ row }) {
-    const already = row.check_in_participant === 1 || row.check_in_status === 'checked_in';
-    return (
-      <Badge color={already ? 'blue' : 'gray'}>
-        {already ? 'เช็คอินแล้ว' : 'ยังไม่เช็คอิน'}
-      </Badge>
-    );
+  async function handleExport() {
+    if (exporting) return;
+    try {
+      setExporting(true);
+      const params = new URLSearchParams();
+      if (search) params.set('search', search);
+      if (status) params.set('status', status);
+      if (participantType) params.set('participantType', participantType);
+      const queryString = params.toString();
+      const res = await fetch(`/api/admin/checkin/export${queryString ? `?${queryString}` : ''}`);
+      if (!res.ok) {
+        let message = 'ไม่สามารถส่งออกไฟล์ได้';
+        try {
+          const data = await res.json();
+          if (data?.message) message = data.message;
+        } catch {}
+        alert(message);
+        return;
+      }
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      link.download = `registrants-export-${timestamp}.xlsx`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('dashboard export error', error);
+      alert('เกิดข้อผิดพลาดในการส่งออกไฟล์');
+    } finally {
+      setExporting(false);
+    }
   }
 
-  function typeTh(val) {
+  useEffect(() => { loadStats(); }, []);
+  useEffect(() => { loadTable(); }, [page, pageSize, status, participantType]);
+
+  const typeTh = (val) => {
     const map = {
       participant: 'ผู้เข้าร่วมงาน',
       speaker: 'วิทยากร',
       executive: 'ผู้บริหาร',
     };
     return map[val] || val;
+  };
+
+  const typeCountsMap = (stats?.typeCounts || []).reduce((acc, item) => {
+    if (!item) return acc;
+    const key = item.type ?? 'unknown';
+    acc[key] = item.cnt ?? 0;
+    return acc;
+  }, {});
+
+  const totalTypeCount = (stats?.typeCounts || []).reduce((sum, item) => sum + (item?.cnt || 0), 0);
+
+  function StatusPill({ row }) {
+    const already = row.check_in_participant === 1 || row.check_in_status === 'checked_in';
+    const icon = already ? '✅' : '－';
+    return (
+      <Badge color={already ? 'blue' : 'gray'}>
+        {icon}
+      </Badge>
+    );
   }
 
   return (
@@ -284,7 +341,7 @@ export default function AdminDashboardPage() {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
           <div className="bg-white/90 border border-emerald-100 rounded-2xl p-5 shadow">
             <div className="text-gray-500 text-sm">ลงทะเบียนทั้งหมด</div>
             <div className="text-3xl font-bold text-emerald-700">{stats?.totals?.total ?? (loadingStats ? '…' : 0)}</div>
@@ -298,6 +355,54 @@ export default function AdminDashboardPage() {
             <div className="text-3xl font-bold text-emerald-700">{stats?.totals?.not_checked_in_count ?? (loadingStats ? '…' : 0)}</div>
           </div>
         </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          {PARTICIPANT_TYPES.map((key) => {
+            const count = typeCountsMap[key] || 0;
+            const isSelected = participantType === key;
+            const style = PARTICIPANT_TYPE_STYLES[key];
+            return (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setParticipantType(prev => prev === key ? '' : key)}
+                className={`relative overflow-hidden rounded-2xl p-5 text-left shadow transition transform hover:-translate-y-1 focus:outline-none ${isSelected ? 'ring-2 ring-offset-2 ring-emerald-500 scale-[1.02]' : ''}`}
+              >
+                <div className={`absolute inset-0 bg-gradient-to-br ${style?.gradient || 'from-gray-300 to-gray-400'} opacity-90`} />
+                <div className="relative flex flex-col gap-3 text-white">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xl">{style?.icon || '🎟️'}</span>
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-white/20">
+                      {isSelected ? 'กำลังกรอง' : 'คลิกเพื่อกรอง'}
+                    </span>
+                  </div>
+                  <div>
+                    <div className="text-sm font-medium opacity-80">{typeTh(key)}</div>
+                    <div className="text-3xl font-bold">{count}</div>
+                  </div>
+                </div>
+              </button>
+            );
+          })}
+          <div className="relative overflow-hidden rounded-2xl p-5 bg-white border border-emerald-100 shadow flex flex-col justify-between">
+            <div>
+              <div className="text-emerald-700 text-sm font-semibold mb-2">รวมทั้งหมด</div>
+              <div className="text-4xl font-bold text-emerald-800">{totalTypeCount}</div>
+            </div>
+            <div className="text-xs text-gray-500 mt-3">
+              จำนวนผู้เข้าร่วมทั้งหมดที่มีอยู่ในระบบ
+            </div>
+            {participantType && (
+              <button
+                type="button"
+                onClick={() => setParticipantType('')}
+                className="mt-4 inline-flex items-center gap-1 text-sm text-emerald-600 hover:text-emerald-700"
+              >
+                ล้างตัวกรอง
+              </button>
+            )}
+          </div>
+        </div>
         {statsError && (
           <div className="mb-4 p-4 rounded-xl border-2 border-yellow-200 bg-yellow-50 text-yellow-800 flex items-center justify-between">
             <span>{statsError}</span>
@@ -307,7 +412,7 @@ export default function AdminDashboardPage() {
 
         {/* Filters */}
         <div className="bg-white/90 border border-emerald-100 rounded-2xl p-4 shadow mb-4">
-          <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
+          <div className="flex flex-col lg:flex-row gap-3 items-start lg:items-center">
             <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="ค้นหาชื่อ อีเมล โทรศัพท์ รหัส ลงทะเบียน องค์กร" className="flex-1 w-full rounded-xl border-2 border-emerald-200 p-3" />
             <select value={status} onChange={e=>setStatus(e.target.value)} className="rounded-xl border-2 border-emerald-200 p-3">
               <option value="">สถานะ</option>
@@ -315,7 +420,22 @@ export default function AdminDashboardPage() {
               <option value="checked_in">checked_in</option>
               <option value="no_show">no_show</option>
             </select>
+            <select value={participantType} onChange={e=>{ setParticipantType(e.target.value); setPage(1); }} className="rounded-xl border-2 border-emerald-200 p-3">
+              <option value="">ประเภทผู้เข้าร่วม</option>
+              {PARTICIPANT_TYPES.map(type => (
+                <option key={type} value={type}>{typeTh(type)}</option>
+              ))}
+            </select>
             <button onClick={()=>{ setPage(1); loadTable(); }} className="px-4 py-2 rounded-xl bg-emerald-600 text-white">ค้นหา</button>
+          </div>
+          <div className="mt-3 flex items-center justify-end">
+            <button
+              onClick={handleExport}
+              disabled={exporting}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border-2 border-emerald-500 text-emerald-700 hover:bg-emerald-50 disabled:opacity-60"
+            >
+              {exporting ? 'กำลังส่งออก...' : '📄 ส่งออก Excel'}
+            </button>
           </div>
         </div>
 
@@ -330,7 +450,6 @@ export default function AdminDashboardPage() {
           <table className="min-w-full text-sm">
             <thead className="bg-emerald-50">
               <tr>
-                <th className="p-3 text-left">รหัส</th>
                 <th className="p-3 text-left">ชื่อ-นามสกุล</th>
                 <th className="p-3 text-left">ประเภท</th>
                 <th className="p-3 text-left hidden md:table-cell">องค์กร</th>
@@ -347,7 +466,6 @@ export default function AdminDashboardPage() {
                 <tr><td className="p-4" colSpan={8}>ไม่พบข้อมูล</td></tr>
               ) : items.map(row => (
                 <tr key={row.id} className="border-t border-emerald-100 hover:bg-emerald-50/30">
-                  <td className="p-3 font-mono text-xs">{row.uuid}</td>
                   <td className="p-3">
                     <div className="leading-tight">
                       <div>{row.title}{row.first_name} {row.last_name}</div>
