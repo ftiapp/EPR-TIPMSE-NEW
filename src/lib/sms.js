@@ -39,15 +39,11 @@ export async function sendRegistrationSMS({ phoneNumber, name, participantType, 
     
     // Create Thai message
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
-    let message = `เรียน ${name}\n`;
-    message += `ผู้เข้าร่วมประเภท ${getParticipantTypeInThai(participantType)}\n`;
-    
-    if (organization) {
-      message += `องค์กร ${organization}\n`;
-    }
-    
-    message += `ท่านได้ทำการลงทะเบียนเข้าร่วมงาน "รวมพลังขับเคลื่อน EPR เปลี่ยนบรรจุภัณฑ์ให้เป็นวัตถุดิบ" สำเร็จแล้ว `;
-    message += `ท่านสามารถตรวจสอบบัตรเข้างานได้ที่ ${baseUrl}/ticket/${uuid}`;
+    const ticketUrl = `${baseUrl.replace(/\/$/, '')}/ticket/${uuid}`;
+    let message = `เรียน ${name}`;
+    message += `\nประเภทผู้เข้าร่วม ${getParticipantTypeInThai(participantType)}`;
+    message += `\nท่านสามารถตรวจสอบตั๋วได้ที่`;
+    message += `\n${ticketUrl}`;
     
     // Encoding strategy for Thai: controlled by env SMS_THAI_MODE (HEX | RAW)
     // - HEX: Convert TH->HEX (commonly required by providers for type=5)

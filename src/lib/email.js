@@ -509,16 +509,6 @@ export async function sendRegistrationEmail({
                       </td>
                     </tr>
                     
-                    ${organization ? `
-                    <tr>
-                      <td colspan="2" style="padding-top: 15px;">
-                        <div class="info-row">
-                          <span class="info-label">องค์กร</span>
-                          <span class="info-value">🏢 ${organization}</span>
-                        </div>
-                      </td>
-                    </tr>` : ''}
-                    
                     ${typeof department !== 'undefined' && department ? `
                     <tr>
                       <td colspan="2" style="padding-top: 15px;">
