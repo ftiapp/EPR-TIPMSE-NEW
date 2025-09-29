@@ -1,20 +1,20 @@
-import { MailerSend, EmailParams, Sender, Recipient } from 'mailersend';
+import { ServerClient } from 'postmark';
 import QRCode from 'qrcode';
 
-const FROM_EMAIL = process.env.MAIL_FROM_EMAIL || 'noreply@fti.or.th';
+const FROM_EMAIL = process.env.POSTMARK_FROM_EMAIL || 'fti_mail@fti.or.th';
 const FROM_NAME = process.env.MAIL_FROM_NAME || 'FTI-TIPMSE';
 
-let mailer;
+let client;
 
-function getMailer() {
-  if (!mailer) {
-    const { MAILERSEND_API_KEY } = process.env;
-    if (!MAILERSEND_API_KEY) {
-      throw new Error('Missing MAILERSEND_API_KEY in environment');
+function getClient() {
+  if (!client) {
+    const { POSTMARK_API_KEY } = process.env;
+    if (!POSTMARK_API_KEY) {
+      throw new Error('Missing POSTMARK_API_KEY in environment');
     }
-    mailer = new MailerSend({ apiKey: MAILERSEND_API_KEY });
+    client = new ServerClient(POSTMARK_API_KEY);
   }
-  return mailer;
+  return client;
 }
 
 // Helper to map participant type to Thai
@@ -39,17 +39,22 @@ export async function sendRegistrationEmail({
   lastName,
   department
 }) {
-  const mailer = getMailer();
-
-  const sentFrom = new Sender(FROM_EMAIL, FROM_NAME);
-  const recipients = [new Recipient(toEmail, toName || toEmail)];
+  const client = getClient();
 
   const subject = '🎫 การลงทะเบียนสำเร็จ - EPR Event by TIPMSE & FTI';
-  const text = `เรียนคุณ ${toName || ''}\n\n` +
-    `ขอบคุณสำหรับการลงทะเบียนเข้าร่วมงาน EPR โดย TIPMSE & FTI\n` +
-    `รหัสผู้ลงทะเบียนของคุณ: ${code}\n\n` +
-    `หากมีคำถามเพิ่มเติม สามารถติดต่อทีมงานได้ทางอีเมลนี้\n\n` +
-    `ขอแสดงความนับถือ\nทีมงาน TIPMSE & FTI`;
+  const text = `เรียนคุณ ${toName || ''}
+
+` +
+    `ขอบคุณสำหรับการลงทะเบียนเข้าร่วมงาน EPR โดย TIPMSE & FTI
+` +
+    `รหัสผู้ลงทะเบียนของคุณ: ${code}
+
+` +
+    `หากมีคำถามเพิ่มเติม สามารถติดต่อทีมงานได้ทางอีเมลนี้
+
+` +
+    `ขอแสดงความนับถือ
+ทีมงาน TIPMSE & FTI`;
 
   // Generate QR Code for email
   let qrCodeDataUrl = '';
@@ -583,12 +588,12 @@ export async function sendRegistrationEmail({
 </html>
   `;
 
-  const emailParams = new EmailParams()
-    .setFrom(sentFrom)
-    .setTo(recipients)
-    .setSubject(subject)
-    .setText(text)
-    .setHtml(html);
-
-  await mailer.email.send(emailParams);
+  await client.sendEmail({
+    From: `${FROM_NAME} <${FROM_EMAIL}>`,
+    To: toEmail,
+    Subject: subject,
+    TextBody: text,
+    HtmlBody: html,
+    MessageStream: 'outbound'
+  });
 }
