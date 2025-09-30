@@ -28,8 +28,6 @@ export default function RegisterPage() {
   const [dupCheckTimeout, setDupCheckTimeout] = useState(null);
   const [nameStatus, setNameStatus] = useState(null); // null, 'checking', 'available', 'duplicate'
   const [showLoadingOverlay, setShowLoadingOverlay] = useState(false);
-  const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
-  const [isRegistrationClosed, setIsRegistrationClosed] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({});
   // Refs for scrolling to fields on error
   const titleRef = useRef(null);
@@ -42,33 +40,7 @@ export default function RegisterPage() {
   const router = useRouter();
   const { t, language } = useLanguage();
 
-  // Countdown timer effect
-  useEffect(() => {
-    const targetDate = new Date('2025-09-29T23:59:59+07:00');
-    
-    const updateCountdown = () => {
-      const now = new Date();
-      const difference = targetDate.getTime() - now.getTime();
-      
-      if (difference <= 0) {
-        setIsRegistrationClosed(true);
-        setTimeLeft({ days: 0, hours: 0, minutes: 0, seconds: 0 });
-        return;
-      }
-      
-      const days = Math.floor(difference / (1000 * 60 * 60 * 24));
-      const hours = Math.floor((difference % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-      const minutes = Math.floor((difference % (1000 * 60 * 60)) / (1000 * 60));
-      const seconds = Math.floor((difference % (1000 * 60)) / 1000);
-      
-      setTimeLeft({ days, hours, minutes, seconds });
-    };
-    
-    updateCountdown();
-    const interval = setInterval(updateCountdown, 1000);
-    
-    return () => clearInterval(interval);
-  }, []);
+  // Removed countdown logic to keep registration always open
 
   function update(k, v) {
     setForm(prev => ({ ...prev, [k]: v }));
@@ -289,39 +261,7 @@ export default function RegisterPage() {
               : 'Please fill in all required information to register for our event'
             }
           </p>
-          
-          {/* Countdown Timer */}
-          <div className="mb-6">
-            {isRegistrationClosed ? (
-              <div className="bg-red-100 border-2 border-red-300 rounded-2xl p-6 max-w-md mx-auto">
-                <div className="text-red-700 font-bold text-xl mb-2">ปิดรับลงทะเบียนแล้ว</div>
-                <div className="text-red-600">การลงทะเบียนสิ้นสุดลงแล้ว</div>
-              </div>
-            ) : (
-              <div className="bg-gradient-to-r from-green-50 to-white border-2 border-green-200 rounded-2xl p-6 max-w-md mx-auto shadow-lg">
-                <div className="text-green-700 font-bold text-lg mb-3">ปิดรับลงทะเบียน</div>
-                <div className="grid grid-cols-4 gap-3 text-center">
-                  <div className="bg-white rounded-xl p-3 border border-green-200 shadow-sm">
-                    <div className="text-2xl font-bold text-green-600">{timeLeft.days}</div>
-                    <div className="text-xs text-green-500 font-medium">วัน</div>
-                  </div>
-                  <div className="bg-white rounded-xl p-3 border border-green-200 shadow-sm">
-                    <div className="text-2xl font-bold text-green-600">{timeLeft.hours}</div>
-                    <div className="text-xs text-green-500 font-medium">ชั่วโมง</div>
-                  </div>
-                  <div className="bg-white rounded-xl p-3 border border-green-200 shadow-sm">
-                    <div className="text-2xl font-bold text-green-600">{timeLeft.minutes}</div>
-                    <div className="text-xs text-green-500 font-medium">นาที</div>
-                  </div>
-                  <div className="bg-white rounded-xl p-3 border border-green-200 shadow-sm">
-                    <div className="text-2xl font-bold text-green-600">{timeLeft.seconds}</div>
-                    <div className="text-xs text-green-500 font-medium">วินาที</div>
-                  </div>
-                </div>
-                <div className="text-green-600 text-sm mt-3 font-medium">29 กันยายน 2567</div>
-              </div>
-            )}
-          </div>
+
         </div>
 
         <form onSubmit={onSubmit} className="bg-white/80 backdrop-blur-xl rounded-3xl shadow-2xl border border-green-100/50 p-6 sm:p-8 lg:p-10 space-y-8">
@@ -694,7 +634,7 @@ export default function RegisterPage() {
           <div className="pt-6">
             <button
               type="submit"
-              disabled={submitting || nameStatus === 'duplicate' || isRegistrationClosed}
+              disabled={submitting || nameStatus === 'duplicate'}
               className="w-full group relative overflow-hidden rounded-2xl bg-gradient-to-r from-green-500 via-emerald-500 to-teal-500 px-8 py-4 text-white font-semibold text-lg shadow-xl hover:shadow-2xl disabled:opacity-60 disabled:cursor-not-allowed transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98]"
             >
               <div className="absolute inset-0 bg-gradient-to-r from-green-600 via-emerald-600 to-teal-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>

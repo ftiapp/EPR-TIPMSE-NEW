@@ -13,6 +13,15 @@ function thaiToHex(text) {
   return Buffer.from(text, 'utf8').toString('hex').toUpperCase();
 }
 
+// Ensure addressee always uses 'คุณ <first> <last>' and strips any provided titles
+function normalizeAddressee(name) {
+  const raw = (name || '').toString().trim();
+  if (!raw) return 'คุณ';
+  // Strip common Thai/English titles at the start
+  const withoutTitle = raw.replace(/^(คุณ|นาย|นางสาว|นาง|ดร\.?|ดร|Mr\.?|Mrs\.?|Ms\.?)\s*/i, '');
+  return `คุณ ${withoutTitle}`.trim();
+}
+
 // Function to format phone number to international format
 function formatPhoneNumber(phone) {
   // Remove any non-digit characters
@@ -40,7 +49,7 @@ export async function sendRegistrationSMS({ phoneNumber, name, participantType, 
     // Create Thai message
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
     const ticketUrl = `${baseUrl.replace(/\/$/, '')}/ticket/${uuid}`;
-    let message = `เรียน ${name}`;
+    let message = `เรียน ${normalizeAddressee(name)}`;
     message += `\nประเภทผู้เข้าร่วม ${getParticipantTypeInThai(participantType)}`;
     message += `\nท่านสามารถตรวจสอบตั๋วได้ที่`;
     message += `\n${ticketUrl}`;
@@ -104,6 +113,44 @@ export async function sendRegistrationSMS({ phoneNumber, name, participantType, 
   }
 }
 
+// Reminder template SMS
+export async function sendReminderSMS({ phoneNumber, name, participantType, uuid }) {
+  try {
+    const formattedPhone = formatPhoneNumber(phoneNumber);
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+    const ticketUrl = `${baseUrl.replace(/\/$/, '')}/ticket/${uuid}`;
+
+    // ตามข้อความที่คุณต้องการ
+    let message = 'Reminder: รวมพลังขับเคลื่อน EPR เปลี่ยนบรรจุภัณฑ์ให้เป็นวัตถุดิบ';
+    message += `\nเรียน ${normalizeAddressee(name)}`;
+    message += `\nประเภทผู้เข้าร่วม ${getParticipantTypeInThai(participantType)}`;
+    message += `\nวันที่: 30 กันยายน 2568 เวลา 9.00 - 12.00 น.`;
+    message += `\nตั๋วของท่าน: ${ticketUrl}`;
+
+    const thaiMode = (process.env.SMS_THAI_MODE || 'HEX').toUpperCase();
+    const useRawThai = thaiMode === 'RAW';
+    const hexMessage = useRawThai ? null : thaiToHex(message);
+
+    const enc = encodeURIComponent;
+    const apiUrl = `${SMS_CONFIG.apiUrl}`
+      + `?user=${enc(SMS_CONFIG.user)}`
+      + `&pass=${SMS_CONFIG.pass}`
+      + `&type=${enc(SMS_CONFIG.type)}`
+      + `&to=${enc(formattedPhone)}`
+      + `&from=${enc(SMS_CONFIG.from)}`
+      + `&text=${enc(useRawThai ? message : hexMessage)}`
+      + `&servid=${enc(SMS_CONFIG.serviceId)}`;
+
+    const response = await fetch(apiUrl, { method: 'GET', headers: { 'User-Agent': 'FTI-TIPMSE-Registration/1.0' } });
+    const result = await response.text();
+    if (response.ok && result) return { success: true, messageId: result.trim() };
+    return { success: false, error: result };
+  } catch (error) {
+    console.error('Reminder SMS error:', error);
+    return { success: false, error: error.message };
+  }
+}
+
 // Helper function to convert participant type to Thai
 function getParticipantTypeInThai(type) {
   const types = {
@@ -115,4 +162,4 @@ function getParticipantTypeInThai(type) {
   return types[type] || 'ผู้เข้าร่วมงาน';
 }
 
-export default { sendRegistrationSMS };
+export default { sendRegistrationSMS, sendReminderSMS };

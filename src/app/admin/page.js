@@ -142,10 +142,81 @@ export default function AdminDashboardPage() {
   const [editingId, setEditingId] = useState(null);
   const [editDraft, setEditDraft] = useState({});
   const [modal, setModal] = useState({ open: false, kind: 'loading', message: '' });
+  const [selectedIds, setSelectedIds] = useState(new Set());
 
   async function logout() {
     await fetch('/api/admin/auth', { method: 'DELETE' });
     router.push('/admin/login');
+  }
+
+  function isAllVisibleSelected() {
+    if (!items || items.length === 0) return false;
+    return items.every(r => selectedIds.has(r.id));
+  }
+
+  function toggleSelectAllVisible() {
+    setSelectedIds(prev => {
+      const allSelected = items.every(r => prev.has(r.id));
+      if (allSelected) {
+        // unselect all visible
+        const next = new Set(prev);
+        items.forEach(r => next.delete(r.id));
+        return next;
+      }
+      // select all visible
+      const next = new Set(prev);
+      items.forEach(r => next.add(r.id));
+      return next;
+    });
+  }
+
+  function toggleSelectOne(id) {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+
+  async function sendReminderSelected() {
+    if (selectedIds.size === 0) return;
+    setModal({ open: true, kind: 'loading', message: `กำลังส่ง SMS ถึง ${selectedIds.size} รายการ` });
+    try {
+      // ส่งแบบขนานด้วย concurrency limit เพื่อให้เร็วขึ้นและลดโอกาสโดน rate limit
+      const ids = Array.from(selectedIds);
+      const limit = 10; // ปรับได้ตามความเหมาะสมของผู้ให้บริการ SMS
+      let cursor = 0;
+      let success = 0;
+      let fail = 0;
+
+      async function worker() {
+        while (true) {
+          const i = cursor++;
+          if (i >= ids.length) break;
+          const id = ids[i];
+          try {
+            const res = await fetch('/api/admin/resend-sms', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ id, mode: 'reminder' })
+            });
+            if (res.ok) success++; else fail++;
+          } catch {
+            fail++;
+          }
+        }
+      }
+
+      const workers = Array.from({ length: Math.min(limit, ids.length) }, () => worker());
+      await Promise.all(workers);
+
+      setModal({ open: true, kind: 'success', message: `ส่งสำเร็จ ${success} รายการ, ล้มเหลว ${fail} รายการ` });
+      setTimeout(()=> setModal({ open: false, kind: 'success', message: '' }), 1500);
+    } catch (e) {
+      console.error('bulk sms error', e);
+      setModal({ open: false, kind: 'loading', message: '' });
+      alert('ส่ง SMS บางรายการไม่สำเร็จ');
+    }
   }
 
   function startEdit(row) {
@@ -250,6 +321,13 @@ export default function AdminDashboardPage() {
       if (res.ok && data && data.ok) {
         setItems(data.items);
         setTotal(data.total);
+        // Remove selections that are no longer visible
+        setSelectedIds(prev => {
+          const next = new Set();
+          const visible = new Set((data.items || []).map(r => r.id));
+          for (const id of prev) if (visible.has(id)) next.add(id);
+          return next;
+        });
       } else {
         // If unauthorized or error, reset items and optionally show a message
         setItems([]);
@@ -436,7 +514,16 @@ export default function AdminDashboardPage() {
             </select>
             <button onClick={()=>{ setPage(1); loadTable(); }} className="px-4 py-2 rounded-xl bg-emerald-600 text-white">ค้นหา</button>
           </div>
-          <div className="mt-3 flex items-center justify-end">
+          <div className="mt-3 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <button
+                onClick={sendReminderSelected}
+                disabled={selectedIds.size === 0}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 text-white disabled:opacity-50"
+              >
+                📱 ส่ง SMS เตือน {selectedIds.size > 0 ? `(${selectedIds.size})` : ''}
+              </button>
+            </div>
             <button
               onClick={handleExport}
               disabled={exporting}
@@ -458,6 +545,18 @@ export default function AdminDashboardPage() {
           <table className="min-w-full text-sm">
             <thead className="bg-emerald-50">
               <tr>
+                <th className="p-3 w-10">
+                  <button
+                    type="button"
+                    onClick={toggleSelectAllVisible}
+                    aria-label={isAllVisibleSelected() ? 'Unselect all' : 'Select all'}
+                    className={`w-5 h-5 inline-flex items-center justify-center rounded-full border-2 ${isAllVisibleSelected() ? 'bg-emerald-500 border-emerald-600' : 'bg-white border-emerald-300'}`}
+                  >
+                    {isAllVisibleSelected() && (
+                      <span className="w-2.5 h-2.5 rounded-full bg-white inline-block" />
+                    )}
+                  </button>
+                </th>
                 <th className="p-3 text-left">ชื่อ-นามสกุล</th>
                 <th className="p-3 text-left">ประเภท</th>
                 <th className="p-3 text-left hidden md:table-cell">องค์กร</th>
@@ -469,11 +568,23 @@ export default function AdminDashboardPage() {
             </thead>
             <tbody>
               {loadingTable ? (
-                <tr><td className="p-4" colSpan={8}>กำลังโหลด...</td></tr>
+                <tr><td className="p-4" colSpan={9}>กำลังโหลด...</td></tr>
               ) : items.length === 0 ? (
-                <tr><td className="p-4" colSpan={8}>ไม่พบข้อมูล</td></tr>
+                <tr><td className="p-4" colSpan={9}>ไม่พบข้อมูล</td></tr>
               ) : items.map(row => (
                 <tr key={row.id} className="border-t border-emerald-100 hover:bg-emerald-50/30">
+                  <td className="p-3">
+                    <button
+                      type="button"
+                      onClick={() => toggleSelectOne(row.id)}
+                      aria-label={selectedIds.has(row.id) ? 'Unselect row' : 'Select row'}
+                      className={`w-5 h-5 inline-flex items-center justify-center rounded-full border-2 ${selectedIds.has(row.id) ? 'bg-emerald-500 border-emerald-600' : 'bg-white border-emerald-300'}`}
+                    >
+                      {selectedIds.has(row.id) && (
+                        <span className="w-2.5 h-2.5 rounded-full bg-white inline-block" />
+                      )}
+                    </button>
+                  </td>
                   <td className="p-3">
                     <div className="leading-tight">
                       <div>{row.title}{row.first_name} {row.last_name}</div>
