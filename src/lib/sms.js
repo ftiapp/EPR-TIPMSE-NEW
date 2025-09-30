@@ -8,9 +8,16 @@ const SMS_CONFIG = {
   apiUrl: process.env.SMS_API_URL || 'https://www.etracker.cc/bulksms/mesapi.aspx'
 };
 
-// Function to convert Thai text to HEX encoding
-function thaiToHex(text) {
-  return Buffer.from(text, 'utf8').toString('hex').toUpperCase();
+// Convert text to UCS-2 (UTF-16BE) HEX for Thai SMS (commonly required when type=5)
+function toUcs2Hex(text) {
+  // Buffer.from(..., 'utf16le') produces UTF-16LE; swap bytes to get BE
+  const le = Buffer.from(text, 'utf16le');
+  const be = Buffer.alloc(le.length);
+  for (let i = 0; i < le.length; i += 2) {
+    be[i] = le[i + 1];
+    be[i + 1] = le[i];
+  }
+  return be.toString('hex').toUpperCase();
 }
 
 // Ensure addressee always uses 'คุณ <first> <last>' and strips any provided titles
@@ -59,7 +66,7 @@ export async function sendRegistrationSMS({ phoneNumber, name, participantType, 
     // - RAW: Send UTF-8 Thai with normal URL encoding
     const thaiMode = (process.env.SMS_THAI_MODE || 'HEX').toUpperCase();
     const useRawThai = thaiMode === 'RAW';
-    const hexMessage = useRawThai ? null : thaiToHex(message);
+    const hexMessage = useRawThai ? null : toUcs2Hex(message);
     
     // Build API URL manually to avoid double-encoding of password ('%23' should remain as '%23')
     const enc = encodeURIComponent;
@@ -77,7 +84,7 @@ export async function sendRegistrationSMS({ phoneNumber, name, participantType, 
     console.log('Phone (original):', phoneNumber);
     console.log('Phone (formatted):', formattedPhone);
     console.log('Message (original):', message);
-    console.log('Thai mode:', useRawThai ? 'RAW (no HEX)' : 'HEX');
+    console.log('Thai mode:', useRawThai ? 'RAW (no HEX)' : 'UCS2-HEX');
     if (!useRawThai) console.log('Message (HEX):', hexMessage);
     console.log('Full SMS URL:', apiUrl);
     console.log('SMS Config:', SMS_CONFIG);
@@ -129,7 +136,7 @@ export async function sendReminderSMS({ phoneNumber, name, participantType, uuid
 
     const thaiMode = (process.env.SMS_THAI_MODE || 'HEX').toUpperCase();
     const useRawThai = thaiMode === 'RAW';
-    const hexMessage = useRawThai ? null : thaiToHex(message);
+    const hexMessage = useRawThai ? null : toUcs2Hex(message);
 
     const enc = encodeURIComponent;
     const apiUrl = `${SMS_CONFIG.apiUrl}`
