@@ -41,7 +41,7 @@ export default function Header() {
                   className="w-full h-full object-contain"
                 />
               </div>
-              <div className="hidden md:flex flex-col leading-tight">
+              <div className="hidden lg:flex flex-col leading-tight">
                 <span className="text-lg font-bold bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent leading-tight">
                   สถาบันการจัดการบรรจุภัณฑ์และรีไซเคิลเพื่อสิ่งแวดล้อม
                 </span>
@@ -55,7 +55,7 @@ export default function Header() {
                   </span>
                 )}
               </div>
-              <div className="md:hidden">
+              <div className="lg:hidden">
                 <span className="text-lg font-bold bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
                   TIPMSE
                 </span>
@@ -63,8 +63,8 @@ export default function Header() {
             </motion.div>
           </Link>
 
-          {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center space-x-8">
+          {/* Desktop Navigation (lg and up) */}
+          <nav className="hidden lg:flex items-center space-x-8">
             {menuItems.map((item, index) => (
               <Link key={item.name} href={item.href} className="text-gray-700 hover:text-emerald-600 font-medium transition-colors duration-200">
                 <motion.span
@@ -106,8 +106,8 @@ export default function Header() {
             </motion.button>
           </nav>
 
-          {/* Mobile menu button and language toggle */}
-          <div className="md:hidden flex items-center space-x-2">
+          {/* Mobile/Tablet menu button and language toggle (below lg) */}
+          <div className="lg:hidden flex items-center space-x-2">
             {/* Mobile Language Toggle */}
             <motion.button
               onClick={toggleLanguage}
